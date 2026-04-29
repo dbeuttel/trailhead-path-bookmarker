@@ -4,6 +4,8 @@ A Windows system-tray app for bookmarking folder paths with quick-action buttons
 
 Personal utility, Windows-only.
 
+> **Template repo.** This is also the canonical pattern used to bootstrap any new Windows tray app I build. Scaffold a new one via the Claude Code skill `/new-tray-app` (clones this repo, renames everything, optionally reskins, and pushes a fresh GitHub repo). The reusable scaffolding lives in `electron/`, `src/components/{Popup,ConfirmDialog,TabBar}.jsx`, `scripts/generate-icon.js`, and the dark CSS tokens in `src/styles/index.css`. The bookmark/tab/column domain model in `src/components/{Column,BookmarkRow,AddBookmarkForm}.jsx` is Trailhead-specific — strip it when starting a new app.
+
 ## Screenshots
 
 _TBD — drop popup + context-menu screenshots in `assets/` and link them here._
