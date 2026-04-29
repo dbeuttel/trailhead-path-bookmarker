@@ -1,0 +1,50 @@
+{
+  "name": "folder-bookmark-tray",
+  "version": "0.1.0",
+  "description": "Windows system tray app for bookmarking folders with quick-action buttons (Explorer, Terminal, Claude, Visual Studio).",
+  "main": "electron/main.js",
+  "author": "dbeuttel",
+  "license": "MIT",
+  "scripts": {
+    "icon": "node scripts/generate-icon.js",
+    "dev:vite": "vite",
+    "dev:electron": "wait-on http://localhost:5174 && electron .",
+    "dev": "concurrently -k \"npm:dev:vite\" \"npm:dev:electron\"",
+    "build": "vite build",
+    "start": "electron .",
+    "dist": "npm run build && electron-builder",
+    "postinstall": "node scripts/generate-icon.js"
+  },
+  "dependencies": {
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.3.4",
+    "concurrently": "^9.1.2",
+    "electron": "^33.2.1",
+    "electron-builder": "^25.1.8",
+    "vite": "^5.4.11",
+    "wait-on": "^8.0.1"
+  },
+  "build": {
+    "appId": "com.dbeuttel.folder-bookmark-tray",
+    "productName": "Folder Bookmark Tray",
+    "files": [
+      "electron/**/*",
+      "dist/**/*",
+      "assets/**/*"
+    ],
+    "win": {
+      "target": "nsis",
+      "icon": "assets/tray-icon.png"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
+    },
+    "directories": {
+      "output": "build"
+    }
+  }
+}
