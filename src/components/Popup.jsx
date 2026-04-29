@@ -152,7 +152,7 @@ export default function Popup({
     <div className="popup">
       <div className="popup-inner" ref={rootRef}>
         <div className="popup-header drag-region">
-          <h1>Folder Bookmarks</h1>
+          <h1>Trailhead</h1>
           <div className="header-actions">
             {!creatingColumn ? (
               <button

@@ -1,6 +1,8 @@
-// Generates assets/tray-icon.png — a 32x32 folder pictogram in orange on a
-// transparent background. No external image deps; raw PNG bytes via zlib.
-// Replace with a designer asset when one is available.
+// Generates assets/tray-icon.png — Trailhead branding: a mountain peak with
+// a small pennant flag at the summit, in the app's accent orange. Tuned for
+// recognizability at Windows tray sizes (16-24px) by keeping every stroke
+// at least 2 source pixels wide so it survives downscaling.
+// No external image deps; raw PNG bytes via zlib.
 
 const fs = require('fs');
 const path = require('path');
@@ -9,26 +11,41 @@ const zlib = require('zlib');
 const SIZE = 32;
 const OUT = path.join(__dirname, '..', 'assets', 'tray-icon.png');
 
-const ORANGE = [217, 119, 87, 255];
-const ORANGE_DARK = [180, 92, 64, 255];
+const ORANGE = [217, 119, 87, 255];       // #d97757
+const ORANGE_DARK = [165, 82, 56, 255];   // shadow on right slope + pole
+const ORANGE_LIGHT = [240, 158, 124, 255]; // peak highlight + flag
 const TRANSPARENT = [0, 0, 0, 0];
 
+// Mountain triangle: peak at (15-16, 8), base spans (2-29, 27).
+function mountainHalfWidth(y) {
+  if (y < 8 || y > 27) return -1;
+  // Linear from 1 at y=8 (peak ~2px) to 14 at y=27 (~28px base).
+  return Math.floor(((y - 8) * 13) / 19) + 1;
+}
+
 function colorAt(x, y) {
-  // Folder tab (top): smaller rectangle on the left
-  const tabLeft = 4, tabRight = 13, tabTop = 7, tabBottom = 11;
-  // Folder body: larger rectangle below
-  const bodyLeft = 3, bodyRight = 28, bodyTop = 11, bodyBottom = 25;
+  // Flag pole — vertical 2px column from y=2 down to where it meets the peak.
+  if ((x === 15 || x === 16) && y >= 2 && y <= 8) return ORANGE_DARK;
 
-  const inTab = x >= tabLeft && x <= tabRight && y >= tabTop && y <= tabBottom;
-  const inBody = x >= bodyLeft && x <= bodyRight && y >= bodyTop && y <= bodyBottom;
+  // Flag pennant — rectangle to the right of the pole.
+  if (y >= 3 && y <= 6 && x >= 17 && x <= 22) return ORANGE_LIGHT;
 
-  if (!inTab && !inBody) return TRANSPARENT;
+  // Mountain body.
+  const hw = mountainHalfWidth(y);
+  if (hw > 0) {
+    const cx = 15;
+    const left = cx - hw + 1;
+    const right = cx + hw;
+    if (x >= left && x <= right) {
+      // Right slope shadow — last 2 columns on the right edge of each row.
+      if (x >= right - 1 && hw > 1) return ORANGE_DARK;
+      // Soft peak highlight — top 2 rows, painted lighter.
+      if (y <= 9) return ORANGE_LIGHT;
+      return ORANGE;
+    }
+  }
 
-  // Soft top edge on body where the tab steps down — paints a single-row
-  // shadow line to give the folder some dimension at small sizes.
-  if (inBody && y === bodyTop && x > tabRight + 1) return ORANGE_DARK;
-
-  return ORANGE;
+  return TRANSPARENT;
 }
 
 function buildRawImage() {

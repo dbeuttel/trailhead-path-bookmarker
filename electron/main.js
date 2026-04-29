@@ -471,7 +471,7 @@ function addBookmarkInternal({ id, alias, path: pathValue, color, columnId, hide
 function createTray() {
   const image = nativeImage.createFromPath(getIconPath());
   tray = new Tray(image.isEmpty() ? nativeImage.createEmpty() : image);
-  tray.setToolTip('Folder Bookmark Tray');
+  tray.setToolTip('Trailhead Path Bookmarker');
   tray.setContextMenu(buildContextMenu());
   tray.on('click', togglePopup);
 }

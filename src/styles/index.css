@@ -15,6 +15,19 @@
 
 * { box-sizing: border-box; }
 
+/* Hide scrollbars on every scroll surface. The popup still scrolls when
+   content exceeds the auto-resized window (or the columns row exceeds the
+   horizontal cap), but the chrome itself stays clean. */
+* {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+*::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+  display: none;
+}
+
 html, body, #root {
   margin: 0;
   padding: 0;

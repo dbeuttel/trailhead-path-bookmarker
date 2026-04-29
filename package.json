@@ -29,7 +29,7 @@
   },
   "build": {
     "appId": "com.dbeuttel.folder-bookmark-tray",
-    "productName": "Folder Bookmark Tray",
+    "productName": "Trailhead",
     "files": [
       "electron/**/*",
       "dist/**/*",
