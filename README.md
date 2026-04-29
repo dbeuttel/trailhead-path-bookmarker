@@ -82,9 +82,16 @@ assets/tray-icon.png       orange folder pictogram, 32×32
 
 Electron 33, React 18, Vite 5. NSIS installer via `electron-builder` (`appId: com.dbeuttel.trailhead-path-bookmarker`). No native deps.
 
+## Roadmap
+
+Tracked future work, no committed timeline:
+
+- **macOS support** — second-class until I'm dual-booting. Will need a different tray icon (template image / monochrome), `wt.exe` → Terminal.app, `code` path resolution, NSIS → DMG/PKG, `setLoginItemSettings` already cross-platform.
+- **Minifier / uglifier on the Electron-side bundle** — Vite already minifies the renderer; the main + preload scripts ship as-is inside the asar. Add a Terser pass (or `javascript-obfuscator`) over `electron/**/*.js` as part of `npm run dist` so the source isn't trivially readable from the install dir.
+
 ## Non-goals
 
-- macOS / Linux support
+- Linux support
 - Cloud sync of bookmarks
 - Drag-to-reorder
 - Tagging or folder grouping
