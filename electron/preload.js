@@ -40,6 +40,7 @@ contextBridge.exposeInMainWorld('bookmarks', {
 
   // Window
   setPinned: (value) => ipcRenderer.invoke('set-pinned', value),
+  setMinimized: (value) => ipcRenderer.invoke('set-minimized', value),
   setPopupHeight: (height) => ipcRenderer.invoke('set-popup-height', height),
   setPopupWidth: (width) => ipcRenderer.invoke('set-popup-width', width),
 

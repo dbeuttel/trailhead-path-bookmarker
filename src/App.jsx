@@ -7,6 +7,7 @@ export default function App() {
   const [columns, setColumns] = useState([]);
   const [bookmarks, setBookmarks] = useState([]);
   const [pinned, setPinned] = useState(false);
+  const [minimized, setMinimized] = useState(false);
   const [loading, setLoading] = useState(true);
   const [claudeAvailable, setClaudeAvailable] = useState(true);
   const [buttonVisibility, setButtonVisibility] = useState({ claude: true, terminal: true, redeploy: true });
@@ -26,6 +27,7 @@ export default function App() {
     setColumns(Array.isArray(cfg.columns) ? cfg.columns : []);
     setBookmarks(Array.isArray(cfg.bookmarks) ? cfg.bookmarks : []);
     setPinned(!!cfg.pinned);
+    setMinimized(!!cfg.minimized);
     setClaudeAvailable(!!hasClaude);
     if (cfg.buttonVisibility) {
       setButtonVisibility({
@@ -56,6 +58,7 @@ export default function App() {
         });
       }
       if (typeof payload.autoStart === 'boolean') setAutoStart(payload.autoStart);
+      if (typeof payload.minimized === 'boolean') setMinimized(payload.minimized);
     });
     const offShown = window.bookmarks.onPopupShown(() => {
       setInspectRevision((r) => r + 1);
@@ -159,6 +162,12 @@ export default function App() {
     setPinned(!!next);
   }, [pinned]);
 
+  const handleToggleMinimized = useCallback(async () => {
+    setMinimized((prev) => !prev);
+    const next = await window.bookmarks.setMinimized(!minimized);
+    if (typeof next === 'boolean') setMinimized(next);
+  }, [minimized]);
+
   const handleSetButtonVisibility = useCallback(async (patch) => {
     // Optimistic update so the checkbox flips immediately even before main responds.
     setButtonVisibility((prev) => ({ ...prev, ...patch }));
@@ -211,6 +220,8 @@ export default function App() {
         onSetButtonVisibility={handleSetButtonVisibility}
         autoStart={autoStart}
         onSetAutoStart={handleSetAutoStart}
+        minimized={minimized}
+        onToggleMinimized={handleToggleMinimized}
         onTogglePin={handleTogglePin}
         onAdd={handleAdd}
         onEdit={handleEdit}

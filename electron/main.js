@@ -296,6 +296,7 @@ function truncatePath(p) {
 
 function broadcastConfig() {
   if (popupWindow && !popupWindow.isDestroyed()) {
+    const cfg = readConfig();
     popupWindow.webContents.send('config-updated', {
       tabs: getTabs(),
       columns: getColumns(),
@@ -303,6 +304,7 @@ function broadcastConfig() {
       activeTabId: getActiveTabId(),
       buttonVisibility: getButtonVisibility(),
       autoStart: getAutoStart(),
+      minimized: !!cfg.minimized,
     });
   }
 }
@@ -488,6 +490,7 @@ ipcMain.handle('get-config', () => {
     activeTabId: getActiveTabId(),
     buttonVisibility: getButtonVisibility(),
     autoStart: getAutoStart(),
+    minimized: !!cfg.minimized,
   };
 });
 
@@ -711,6 +714,13 @@ ipcMain.handle('open-visual-studio', (_event, p) => launchers.openVisualStudio(p
 ipcMain.handle('run-redeploy', (_event, p) => launchers.runRedeploy(p));
 ipcMain.handle('copy-path', (_event, text) => launchers.copyPath(text));
 ipcMain.handle('is-claude-available', () => launchers.isClaudeAvailable());
+
+ipcMain.handle('set-minimized', (_event, value) => {
+  const next = !!value;
+  writeConfig({ minimized: next });
+  broadcastConfig();
+  return next;
+});
 
 ipcMain.handle('set-pinned', (_event, value) => {
   pinned = !!value;
