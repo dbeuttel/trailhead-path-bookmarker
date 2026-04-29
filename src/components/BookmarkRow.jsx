@@ -3,7 +3,8 @@ import React, { useEffect, useRef, useState } from 'react';
 export default function BookmarkRow({
   bookmark,
   columns,
-  claudeAvailable,
+  actions,
+  commandAvailability,
   inspectRevision,
   recentColors,
   buttonVisibility,
@@ -14,9 +15,7 @@ export default function BookmarkRow({
   onMoveUp,
   onMoveDown,
 }) {
-  const showClaude = !buttonVisibility || buttonVisibility.claude !== false;
   const showTerminal = !buttonVisibility || buttonVisibility.terminal !== false;
-  const showRedeploy = !buttonVisibility || buttonVisibility.redeploy !== false;
   const [mode, setMode] = useState('view');
   const [menuOpen, setMenuOpen] = useState(false);
   const [inspect, setInspect] = useState({
@@ -24,24 +23,35 @@ export default function BookmarkRow({
     slnPath: null,
     redeployPath: null,
     isNetwork: false,
+    actionMatches: {},
   });
   const [status, setStatus] = useState(null);
   const menuRef = useRef(null);
 
+  // Names of files to probe — the union of every active action's requiresFile.
+  // Joined into a stable string so the inspect effect re-runs only when the
+  // set actually changes (not on every render).
+  const actionFiles = (actions || [])
+    .map((a) => a && a.requiresFile)
+    .filter(Boolean);
+  const actionFilesKey = actionFiles.join('|');
+
   useEffect(() => {
     let cancelled = false;
-    setInspect({ checked: false, slnPath: null, redeployPath: null, isNetwork: false });
-    window.bookmarks.inspectFolder(bookmark.path).then((res) => {
+    setInspect({ checked: false, slnPath: null, redeployPath: null, isNetwork: false, actionMatches: {} });
+    window.bookmarks.inspectFolder(bookmark.path, actionFiles).then((res) => {
       if (cancelled) return;
       setInspect({
         checked: true,
         slnPath: res ? res.slnPath : null,
         redeployPath: res ? res.redeployPath : null,
         isNetwork: !!(res && res.isNetwork),
+        actionMatches: (res && res.actionMatches) || {},
       });
     });
     return () => { cancelled = true; };
-  }, [bookmark.path, inspectRevision]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [bookmark.path, inspectRevision, actionFilesKey]);
 
   useEffect(() => {
     if (!menuOpen) return undefined;
@@ -79,6 +89,19 @@ export default function BookmarkRow({
     } else {
       flash('info', `${label}: opened new tab`);
     }
+  };
+
+  const runConfiguredAction = async (action) => {
+    const res = await window.bookmarks.runAction({
+      actionId: action.id,
+      targetPath: bookmark.path,
+      alias: bookmark.alias,
+      color: bookmark.color,
+    });
+    const label = action.label || 'Action';
+    if (res && res.ok === false) flash('error', `${label}: ${res.error || 'failed'}`);
+    else if (res && res.focused) flash('info', `${label}: focused existing tab`);
+    else flash('info', `${label} ✓`);
   };
 
   const handleCopy = async () => {
@@ -159,39 +182,32 @@ export default function BookmarkRow({
             onClick={() => runTabAction(window.bookmarks.openTerminal, 'Terminal')}
           >&gt;_</button>
         )}
-        {!inspect.isNetwork && (
-          <>
-            {showClaude && (
-              <button
-                className="icon-button"
-                title={
-                  claudeAvailable
-                    ? `Open Claude for "${bookmark.alias}" (focuses existing tab if found)`
-                    : 'Claude CLI not found on PATH — install @anthropic-ai/claude-code'
-                }
-                disabled={!claudeAvailable}
-                onClick={() => runTabAction(window.bookmarks.openClaude, 'Claude')}
-              >C</button>
-            )}
+        {(actions || []).map((action) => {
+          if (!action || !action.id) return null;
+          if (action.hideOnNetwork && inspect.isNetwork) return null;
+          if (action.requiresFile) {
+            const matched = inspect.actionMatches && inspect.actionMatches[action.requiresFile];
+            if (!matched) return null;
+            // Legacy: hideDeploy on a bookmark suppresses the seeded redeploy action.
+            if (action.requiresFile === '1ReDeploy.bat' && bookmark.hideDeploy) return null;
+          }
+          const cmdMissing = action.requiresCommand
+            && commandAvailability
+            && commandAvailability[action.requiresCommand] === false;
+          return (
             <button
+              key={action.id}
               className="icon-button"
               title={
-                !inspect.checked ? 'Checking for .sln…'
-                  : inspect.slnPath ? `Open ${inspect.slnPath.split(/[\\/]/).pop()} in Visual Studio`
-                  : 'No .sln found in this folder'
+                cmdMissing
+                  ? `${action.requiresCommand} not found on PATH`
+                  : `${action.label}${action.kind === 'terminal' ? ` for "${bookmark.alias}"` : ''}`
               }
-              disabled={!inspect.checked || !inspect.slnPath}
-              onClick={() => runPathAction(window.bookmarks.openVisualStudio, 'Visual Studio')}
-            >VS</button>
-          </>
-        )}
-        {showRedeploy && inspect.redeployPath && !bookmark.hideDeploy && (
-          <button
-            className="icon-button"
-            title={`Run ${inspect.redeployPath.split(/[\\/]/).pop()}`}
-            onClick={() => runPathAction(window.bookmarks.runRedeploy, 'Deploy')}
-          >▶</button>
-        )}
+              disabled={cmdMissing}
+              onClick={() => runConfiguredAction(action)}
+            >{action.icon || '?'}</button>
+          );
+        })}
       </div>
       {status && (
         <div className={`row-status ${status.kind === 'error' ? 'error' : 'info'}`}>

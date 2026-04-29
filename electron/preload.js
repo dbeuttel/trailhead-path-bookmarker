@@ -27,7 +27,7 @@ contextBridge.exposeInMainWorld('bookmarks', {
 
   // Folder picking + inspection
   pickFolder: () => ipcRenderer.invoke('pick-folder'),
-  inspectFolder: (path) => ipcRenderer.invoke('inspect-folder', path),
+  inspectFolder: (path, actionFiles) => ipcRenderer.invoke('inspect-folder', path, actionFiles),
 
   // Launchers
   openInExplorer: (path) => ipcRenderer.invoke('open-in-explorer', path),
@@ -37,6 +37,8 @@ contextBridge.exposeInMainWorld('bookmarks', {
   runRedeploy: (path) => ipcRenderer.invoke('run-redeploy', path),
   copyPath: (text) => ipcRenderer.invoke('copy-path', text),
   isClaudeAvailable: () => ipcRenderer.invoke('is-claude-available'),
+  isCommandAvailable: (name) => ipcRenderer.invoke('is-command-available', name),
+  runAction: (payload) => ipcRenderer.invoke('run-action', payload),
 
   // Window
   setPinned: (value) => ipcRenderer.invoke('set-pinned', value),
@@ -47,6 +49,7 @@ contextBridge.exposeInMainWorld('bookmarks', {
   // Settings
   setButtonVisibility: (payload) => ipcRenderer.invoke('set-button-visibility', payload),
   setAutoStart: (value) => ipcRenderer.invoke('set-auto-start', value),
+  setActions: (list) => ipcRenderer.invoke('set-actions', list),
 
   // Events from main → renderer
   onConfigUpdated: (cb) => {

@@ -7,7 +7,8 @@ export default function MinimizedList({
   tabs,
   columns,
   bookmarks,
-  claudeAvailable,
+  actions,
+  commandAvailability,
   inspectRevision,
   buttonVisibility,
 }) {
@@ -41,7 +42,8 @@ export default function MinimizedList({
               <MinimizedRow
                 key={b.id}
                 bookmark={b}
-                claudeAvailable={claudeAvailable}
+                actions={actions}
+                commandAvailability={commandAvailability}
                 inspectRevision={inspectRevision}
                 buttonVisibility={buttonVisibility}
               />
@@ -53,32 +55,38 @@ export default function MinimizedList({
   );
 }
 
-function MinimizedRow({ bookmark, claudeAvailable, inspectRevision, buttonVisibility }) {
-  const showClaude = !buttonVisibility || buttonVisibility.claude !== false;
+function MinimizedRow({ bookmark, actions, commandAvailability, inspectRevision, buttonVisibility }) {
   const showTerminal = !buttonVisibility || buttonVisibility.terminal !== false;
-  const showRedeploy = !buttonVisibility || buttonVisibility.redeploy !== false;
   const [inspect, setInspect] = useState({
     checked: false,
     slnPath: null,
     redeployPath: null,
     isNetwork: false,
+    actionMatches: {},
   });
   const [status, setStatus] = useState(null);
 
+  const actionFiles = (actions || [])
+    .map((a) => a && a.requiresFile)
+    .filter(Boolean);
+  const actionFilesKey = actionFiles.join('|');
+
   useEffect(() => {
     let cancelled = false;
-    setInspect({ checked: false, slnPath: null, redeployPath: null, isNetwork: false });
-    window.bookmarks.inspectFolder(bookmark.path).then((res) => {
+    setInspect({ checked: false, slnPath: null, redeployPath: null, isNetwork: false, actionMatches: {} });
+    window.bookmarks.inspectFolder(bookmark.path, actionFiles).then((res) => {
       if (cancelled) return;
       setInspect({
         checked: true,
         slnPath: res ? res.slnPath : null,
         redeployPath: res ? res.redeployPath : null,
         isNetwork: !!(res && res.isNetwork),
+        actionMatches: (res && res.actionMatches) || {},
       });
     });
     return () => { cancelled = true; };
-  }, [bookmark.path, inspectRevision]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [bookmark.path, inspectRevision, actionFilesKey]);
 
   const flash = (kind, text) => {
     setStatus({ kind, text });
@@ -100,6 +108,19 @@ function MinimizedRow({ bookmark, claudeAvailable, inspectRevision, buttonVisibi
     if (res && res.ok === false) flash('error', `${label}: ${res.error || 'failed'}`);
     else if (res && res.focused) flash('info', `${label}: focused`);
     else flash('info', `${label}: opened`);
+  };
+
+  const runConfiguredAction = async (action) => {
+    const res = await window.bookmarks.runAction({
+      actionId: action.id,
+      targetPath: bookmark.path,
+      alias: bookmark.alias,
+      color: bookmark.color,
+    });
+    const label = action.label || 'Action';
+    if (res && res.ok === false) flash('error', `${label}: ${res.error || 'failed'}`);
+    else if (res && res.focused) flash('info', `${label}: focused`);
+    else flash('info', `${label} ✓`);
   };
 
   const stripeStyle = bookmark.color ? { borderLeftColor: bookmark.color } : undefined;
@@ -124,33 +145,27 @@ function MinimizedRow({ bookmark, claudeAvailable, inspectRevision, buttonVisibi
             onClick={() => runTabAction(window.bookmarks.openTerminal, 'Terminal')}
           >&gt;_</button>
         )}
-        {!inspect.isNetwork && showClaude && (
-          <button
-            className="icon-button mini-btn"
-            title={claudeAvailable ? `Claude: ${bookmark.alias}` : 'Claude CLI not found'}
-            disabled={!claudeAvailable}
-            onClick={() => runTabAction(window.bookmarks.openClaude, 'Claude')}
-          >C</button>
-        )}
-        {!inspect.isNetwork && (
-          <button
-            className="icon-button mini-btn"
-            title={
-              !inspect.checked ? 'Checking…'
-                : inspect.slnPath ? `Open ${inspect.slnPath.split(/[\\/]/).pop()}`
-                : 'No .sln found'
-            }
-            disabled={!inspect.checked || !inspect.slnPath}
-            onClick={() => runPathAction(window.bookmarks.openVisualStudio, 'Visual Studio')}
-          >VS</button>
-        )}
-        {showRedeploy && inspect.redeployPath && !bookmark.hideDeploy && (
-          <button
-            className="icon-button mini-btn"
-            title={`Run ${inspect.redeployPath.split(/[\\/]/).pop()}`}
-            onClick={() => runPathAction(window.bookmarks.runRedeploy, 'Deploy')}
-          >▶</button>
-        )}
+        {(actions || []).map((action) => {
+          if (!action || !action.id) return null;
+          if (action.hideOnNetwork && inspect.isNetwork) return null;
+          if (action.requiresFile) {
+            const matched = inspect.actionMatches && inspect.actionMatches[action.requiresFile];
+            if (!matched) return null;
+            if (action.requiresFile === '1ReDeploy.bat' && bookmark.hideDeploy) return null;
+          }
+          const cmdMissing = action.requiresCommand
+            && commandAvailability
+            && commandAvailability[action.requiresCommand] === false;
+          return (
+            <button
+              key={action.id}
+              className="icon-button mini-btn"
+              title={cmdMissing ? `${action.requiresCommand} not found on PATH` : `${action.label}: ${bookmark.alias}`}
+              disabled={cmdMissing}
+              onClick={() => runConfiguredAction(action)}
+            >{action.icon || '?'}</button>
+          );
+        })}
       </div>
       {status && (
         <div className={`mini-status ${status.kind === 'error' ? 'error' : 'info'}`}>

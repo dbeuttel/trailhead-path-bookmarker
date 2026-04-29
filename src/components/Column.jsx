@@ -7,7 +7,8 @@ export default function Column({
   columns,
   tabs,
   bookmarks,
-  claudeAvailable,
+  actions,
+  commandAvailability,
   inspectRevision,
   recentColors,
   buttonVisibility,
@@ -180,7 +181,8 @@ export default function Column({
               key={b.id}
               bookmark={b}
               columns={columns}
-              claudeAvailable={claudeAvailable}
+              actions={actions}
+              commandAvailability={commandAvailability}
               inspectRevision={inspectRevision}
               recentColors={recentColors}
               buttonVisibility={buttonVisibility}

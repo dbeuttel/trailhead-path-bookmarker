@@ -6,11 +6,12 @@ export default function App() {
   const [activeTabId, setActiveTabId] = useState(null);
   const [columns, setColumns] = useState([]);
   const [bookmarks, setBookmarks] = useState([]);
+  const [actions, setActions] = useState([]);
   const [pinned, setPinned] = useState(false);
   const [minimized, setMinimized] = useState(false);
   const [loading, setLoading] = useState(true);
   const [claudeAvailable, setClaudeAvailable] = useState(true);
-  const [buttonVisibility, setButtonVisibility] = useState({ claude: true, terminal: true, redeploy: true });
+  const [buttonVisibility, setButtonVisibility] = useState({ terminal: true });
   const [autoStart, setAutoStart] = useState(true);
   // Bumped on each popup show so BookmarkRow re-runs its folder inspect.
   // Rows stay mounted across hide/show cycles, so without a revision tick
@@ -26,14 +27,13 @@ export default function App() {
     setActiveTabId(cfg.activeTabId || null);
     setColumns(Array.isArray(cfg.columns) ? cfg.columns : []);
     setBookmarks(Array.isArray(cfg.bookmarks) ? cfg.bookmarks : []);
+    setActions(Array.isArray(cfg.actions) ? cfg.actions : []);
     setPinned(!!cfg.pinned);
     setMinimized(!!cfg.minimized);
     setClaudeAvailable(!!hasClaude);
     if (cfg.buttonVisibility) {
       setButtonVisibility({
-        claude: cfg.buttonVisibility.claude !== false,
         terminal: cfg.buttonVisibility.terminal !== false,
-        redeploy: cfg.buttonVisibility.redeploy !== false,
       });
     }
     setAutoStart(cfg.autoStart !== false);
@@ -47,14 +47,13 @@ export default function App() {
       if (Array.isArray(payload.tabs)) setTabs(payload.tabs);
       if (Array.isArray(payload.columns)) setColumns(payload.columns);
       if (Array.isArray(payload.bookmarks)) setBookmarks(payload.bookmarks);
+      if (Array.isArray(payload.actions)) setActions(payload.actions);
       if (typeof payload.activeTabId === 'string' || payload.activeTabId === null) {
         setActiveTabId(payload.activeTabId);
       }
       if (payload.buttonVisibility) {
         setButtonVisibility({
-          claude: payload.buttonVisibility.claude !== false,
           terminal: payload.buttonVisibility.terminal !== false,
-          redeploy: payload.buttonVisibility.redeploy !== false,
         });
       }
       if (typeof payload.autoStart === 'boolean') setAutoStart(payload.autoStart);
@@ -173,10 +172,14 @@ export default function App() {
     setButtonVisibility((prev) => ({ ...prev, ...patch }));
     const next = await window.bookmarks.setButtonVisibility(patch);
     if (next) setButtonVisibility({
-      claude: next.claude !== false,
       terminal: next.terminal !== false,
-      redeploy: next.redeploy !== false,
     });
+  }, []);
+
+  const handleSetActions = useCallback(async (list) => {
+    setActions(list);
+    const next = await window.bookmarks.setActions(list);
+    if (Array.isArray(next)) setActions(next);
   }, []);
 
   const handleSetAutoStart = useCallback(async (value) => {
@@ -212,6 +215,8 @@ export default function App() {
         activeTabId={activeTabId}
         columns={columns}
         bookmarks={bookmarks}
+        actions={actions}
+        onSetActions={handleSetActions}
         pinned={pinned}
         claudeAvailable={claudeAvailable}
         inspectRevision={inspectRevision}

@@ -60,6 +60,46 @@ function getBookmarks() {
   return Array.isArray(cfg.bookmarks) ? cfg.bookmarks.filter((b) => b && b.id && b.alias && b.path) : [];
 }
 
+function getActions() {
+  const cfg = readConfig();
+  if (!Array.isArray(cfg.actions)) return [];
+  return cfg.actions.filter((a) => a && a.id && a.kind && a.label);
+}
+
+// Default action seeds. Mirror the previously-hardcoded buttons (Claude,
+// Visual Studio, Redeploy) so new installs see the same defaults that
+// existing users had as built-ins.
+function defaultActionSeeds() {
+  return [
+    {
+      id: crypto.randomUUID(),
+      label: 'Claude',
+      icon: 'C',
+      kind: 'terminal',
+      command: 'claude',
+      requiresCommand: 'claude',
+      hideOnNetwork: true,
+    },
+    {
+      id: crypto.randomUUID(),
+      label: 'Visual Studio',
+      icon: 'VS',
+      kind: 'open',
+      requiresFile: '*.sln',
+      hideOnNetwork: true,
+    },
+    {
+      id: crypto.randomUUID(),
+      label: 'Run 1ReDeploy.bat',
+      icon: '▶',
+      kind: 'detached',
+      command: '',
+      requiresFile: '1ReDeploy.bat',
+      keepOpen: true,
+    },
+  ];
+}
+
 function getActiveTabId() {
   const cfg = readConfig();
   const tabs = getTabs();
@@ -69,15 +109,13 @@ function getActiveTabId() {
   return tabs[0].id;
 }
 
-// Per-button visibility for the row action bar. Defaults to true so existing
-// installs see no behavior change.
+// Per-button visibility for the built-in action buttons. Claude and Redeploy
+// have moved into the configurable `actions` list — Terminal stays built-in.
 function getButtonVisibility() {
   const cfg = readConfig();
   const v = cfg.buttonVisibility || {};
   return {
-    claude: v.claude !== false,
     terminal: v.terminal !== false,
-    redeploy: v.redeploy !== false,
   };
 }
 
@@ -166,7 +204,45 @@ function migrateConfigIfNeeded() {
     }
   }
 
-  if (mutated) writeConfig({ columns, bookmarks, tabs, activeTabId });
+  // Seed default action buttons if the user has none configured. Honor the
+  // legacy buttonVisibility flags: if claude/redeploy were toggled off, skip
+  // seeding that action so we don't resurrect a button the user dismissed.
+  const seedPatch = {};
+  if (!Array.isArray(cfg.actions)) {
+    const visibility = cfg.buttonVisibility || {};
+    const seeds = defaultActionSeeds().filter((a) => {
+      if (a.requiresCommand === 'claude') return visibility.claude !== false;
+      if (a.requiresFile === '1ReDeploy.bat') return visibility.redeploy !== false;
+      return true;
+    });
+    seedPatch.actions = seeds;
+    mutated = true;
+  } else if (!cfg.vsActionBackfilled) {
+    // Older users got Claude + Redeploy seeded before VS became a configurable
+    // action. Backfill VS once so they don't silently lose the built-in button.
+    const hasVs = cfg.actions.some((a) => a && /\*\.sln$/i.test(a.requiresFile || ''));
+    if (!hasVs) {
+      const vs = defaultActionSeeds().find((a) => /\*\.sln$/i.test(a.requiresFile || ''));
+      if (vs) seedPatch.actions = [...cfg.actions, vs];
+    }
+    seedPatch.vsActionBackfilled = true;
+    mutated = true;
+  }
+  // The claude/redeploy visibility keys are now expressed as the
+  // presence/absence of the matching action. Strip them so the settings
+  // panel doesn't render stale toggles.
+  if (cfg.buttonVisibility && (
+    Object.prototype.hasOwnProperty.call(cfg.buttonVisibility, 'claude') ||
+    Object.prototype.hasOwnProperty.call(cfg.buttonVisibility, 'redeploy')
+  )) {
+    const v = { ...cfg.buttonVisibility };
+    delete v.claude;
+    delete v.redeploy;
+    seedPatch.buttonVisibility = v;
+    mutated = true;
+  }
+
+  if (mutated) writeConfig({ columns, bookmarks, tabs, activeTabId, ...seedPatch });
 }
 
 function getCurrentHeight() {
@@ -301,6 +377,7 @@ function broadcastConfig() {
       tabs: getTabs(),
       columns: getColumns(),
       bookmarks: getBookmarks(),
+      actions: getActions(),
       activeTabId: getActiveTabId(),
       buttonVisibility: getButtonVisibility(),
       autoStart: getAutoStart(),
@@ -487,6 +564,7 @@ ipcMain.handle('get-config', () => {
     tabs: getTabs(),
     columns: getColumns(),
     bookmarks: getBookmarks(),
+    actions: getActions(),
     activeTabId: getActiveTabId(),
     buttonVisibility: getButtonVisibility(),
     autoStart: getAutoStart(),
@@ -506,14 +584,49 @@ ipcMain.handle('set-button-visibility', (_event, payload) => {
   if (!payload || typeof payload !== 'object') return getButtonVisibility();
   const current = getButtonVisibility();
   const next = {
-    claude: typeof payload.claude === 'boolean' ? payload.claude : current.claude,
     terminal: typeof payload.terminal === 'boolean' ? payload.terminal : current.terminal,
-    redeploy: typeof payload.redeploy === 'boolean' ? payload.redeploy : current.redeploy,
   };
   writeConfig({ buttonVisibility: next });
   broadcastConfig();
   return getButtonVisibility();
 });
+
+ipcMain.handle('set-actions', (_event, list) => {
+  if (!Array.isArray(list)) return getActions();
+  const cleaned = list
+    .filter((a) => a && typeof a === 'object' && a.id && a.label && (a.kind === 'terminal' || a.kind === 'detached' || a.kind === 'open'))
+    .map((a) => {
+      const out = {
+        id: String(a.id),
+        label: String(a.label).slice(0, 40),
+        icon: typeof a.icon === 'string' ? a.icon.slice(0, 4) : '?',
+        kind: a.kind,
+      };
+      if (typeof a.command === 'string' && a.command) out.command = a.command;
+      if (Array.isArray(a.args) && a.args.length > 0) out.args = a.args.map(String);
+      if (typeof a.requiresFile === 'string' && a.requiresFile) out.requiresFile = a.requiresFile;
+      if (typeof a.requiresCommand === 'string' && a.requiresCommand) out.requiresCommand = a.requiresCommand;
+      if (a.hideOnNetwork === true) out.hideOnNetwork = true;
+      if (a.keepOpen === true) out.keepOpen = true;
+      return out;
+    });
+  writeConfig({ actions: cleaned });
+  broadcastConfig();
+  return getActions();
+});
+
+ipcMain.handle('run-action', (_event, payload) => {
+  if (!payload || typeof payload !== 'object') return { ok: false, error: 'Invalid payload.' };
+  const action = (getActions()).find((a) => a.id === payload.actionId);
+  if (!action) return { ok: false, error: 'Action not found.' };
+  return launchers.runAction(action, {
+    targetPath: payload.targetPath,
+    alias: payload.alias,
+    color: payload.color,
+  });
+});
+
+ipcMain.handle('is-command-available', (_event, name) => launchers.isCommandAvailable(name));
 
 ipcMain.handle('set-config', (_event, patch) => {
   return writeConfig(patch || {});
@@ -699,7 +812,7 @@ ipcMain.handle('set-active-tab', (_event, id) => {
 });
 
 ipcMain.handle('pick-folder', () => launchers.pickFolder());
-ipcMain.handle('inspect-folder', (_event, p) => launchers.inspectFolder(p));
+ipcMain.handle('inspect-folder', (_event, p, actionFiles) => launchers.inspectFolder(p, actionFiles));
 
 ipcMain.handle('open-in-explorer', (_event, p) => launchers.openInExplorer(p));
 ipcMain.handle('open-terminal', (_event, payload) => {

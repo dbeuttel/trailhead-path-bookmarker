@@ -3,6 +3,7 @@ import Column from './Column.jsx';
 import TabBar from './TabBar.jsx';
 import ConfirmDialog from './ConfirmDialog.jsx';
 import MinimizedList from './MinimizedList.jsx';
+import ActionEditor from './ActionEditor.jsx';
 import iconUrl from '../../assets/tray-icon.png';
 
 const COLUMN_WIDTH = 216;
@@ -18,6 +19,8 @@ export default function Popup({
   activeTabId,
   columns,
   bookmarks,
+  actions,
+  onSetActions,
   pinned,
   claudeAvailable,
   inspectRevision,
@@ -51,8 +54,27 @@ export default function Popup({
   const [creatingColumn, setCreatingColumn] = useState(false);
   const [draftColumnName, setDraftColumnName] = useState('');
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [actionEditorOpen, setActionEditorOpen] = useState(false);
   const [confirmRequest, setConfirmRequest] = useState(null);
   const [tabStripScrollWidth, setTabStripScrollWidth] = useState(0);
+  const [commandAvailability, setCommandAvailability] = useState({});
+
+  // Probe each action's requiresCommand so its button can show as disabled
+  // when the CLI isn't on PATH. Re-probe whenever the action set or the
+  // popup re-shows (claudeAvailable bumping is the existing signal).
+  useEffect(() => {
+    const names = Array.from(new Set(
+      (actions || []).map((a) => a && a.requiresCommand).filter(Boolean),
+    ));
+    if (names.length === 0) { setCommandAvailability({}); return; }
+    let cancelled = false;
+    Promise.all(names.map((n) => window.bookmarks.isCommandAvailable(n).then((ok) => [n, !!ok])))
+      .then((entries) => {
+        if (cancelled) return;
+        setCommandAvailability(Object.fromEntries(entries));
+      });
+    return () => { cancelled = true; };
+  }, [actions, claudeAvailable]);
 
   const requestConfirm = useCallback((opts) => {
     setConfirmRequest(opts);
@@ -215,15 +237,7 @@ export default function Popup({
               >⚙</button>
               {settingsOpen && (
                 <div className="settings-panel">
-                  <div className="settings-panel-label">Row buttons</div>
-                  <label className="edit-toggle">
-                    <input
-                      type="checkbox"
-                      checked={buttonVisibility.claude !== false}
-                      onChange={(e) => onSetButtonVisibility({ claude: e.target.checked })}
-                    />
-                    <span>Show Claude button</span>
-                  </label>
+                  <div className="settings-panel-label">Built-in buttons</div>
                   <label className="edit-toggle">
                     <input
                       type="checkbox"
@@ -232,14 +246,12 @@ export default function Popup({
                     />
                     <span>Show Terminal button</span>
                   </label>
-                  <label className="edit-toggle">
-                    <input
-                      type="checkbox"
-                      checked={buttonVisibility.redeploy !== false}
-                      onChange={(e) => onSetButtonVisibility({ redeploy: e.target.checked })}
-                    />
-                    <span>Quick Run Redeploy</span>
-                  </label>
+                  <div className="settings-panel-label">Action buttons</div>
+                  <button
+                    type="button"
+                    className="secondary"
+                    onClick={() => { setSettingsOpen(false); setActionEditorOpen(true); }}
+                  >Manage actions… ({(actions || []).length})</button>
                   <div className="settings-panel-label">Startup</div>
                   <label className="edit-toggle">
                     <input
@@ -282,7 +294,8 @@ export default function Popup({
             tabs={tabs}
             columns={columns}
             bookmarks={bookmarks}
-            claudeAvailable={claudeAvailable}
+            actions={actions}
+            commandAvailability={commandAvailability}
             inspectRevision={inspectRevision}
             buttonVisibility={buttonVisibility}
           />
@@ -304,7 +317,8 @@ export default function Popup({
                 tabs={tabs}
                 index={idx}
                 bookmarks={bookmarks.filter((b) => b.columnId === col.id)}
-                claudeAvailable={claudeAvailable}
+                actions={actions}
+                commandAvailability={commandAvailability}
                 inspectRevision={inspectRevision}
                 recentColors={recentColors}
                 buttonVisibility={buttonVisibility}
@@ -334,6 +348,13 @@ export default function Popup({
             setConfirmRequest(null);
             if (typeof fn === 'function') fn();
           }}
+        />
+      )}
+      {actionEditorOpen && (
+        <ActionEditor
+          actions={actions || []}
+          onSave={(next) => { onSetActions(next); }}
+          onClose={() => setActionEditorOpen(false)}
         />
       )}
     </div>
