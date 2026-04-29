@@ -390,6 +390,14 @@ button:disabled { opacity: 0.5; cursor: default; }
   overflow: hidden;
 }
 
+/* Flip the menu above the row for the last bookmark in a column — otherwise
+   it overflows the popup's bottom edge (absolutely-positioned children don't
+   feed into popup-inner.offsetHeight, so auto-resize can't grow to fit). */
+.bookmark-menu.drop-up {
+  top: auto;
+  bottom: 30px;
+}
+
 .bookmark-menu button {
   background: transparent;
   border: none;
@@ -817,6 +825,90 @@ button.danger-button {
 button.danger-button:hover:not(:disabled) {
   background: #f78787;
 }
+
+/* --- Minimized list view --- */
+
+.mini-groups {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.mini-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.mini-group-header {
+  margin: 0;
+  padding: 4px 2px 2px 2px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: var(--text-dim);
+  border-bottom: 1px solid var(--border);
+}
+
+.mini-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.mini-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--border);
+  border-radius: var(--radius);
+  padding: 4px 6px;
+  min-width: 0;
+  flex-wrap: wrap;
+}
+
+.mini-alias {
+  flex: 1;
+  min-width: 0;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+.mini-actions {
+  display: flex;
+  gap: 2px;
+  flex: 0 0 auto;
+}
+
+.icon-button.mini-btn {
+  width: 22px;
+  height: 22px;
+  font-size: 11px;
+  font-weight: 600;
+  border-radius: 4px;
+}
+
+.mini-status {
+  flex: 1 0 100%;
+  font-size: 10px;
+  padding: 2px 4px;
+  border-radius: 3px;
+  margin-top: 2px;
+}
+
+.mini-status.error { background: rgba(239, 107, 107, 0.12); color: var(--error); }
+.mini-status.info { background: rgba(127, 201, 127, 0.12); color: var(--ok); }
 
 /* --- Submenu inside column overflow --- */
 

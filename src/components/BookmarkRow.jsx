@@ -130,7 +130,7 @@ export default function BookmarkRow({
             onClick={() => setMenuOpen((v) => !v)}
           >⋯</button>
           {menuOpen && (
-            <div className="bookmark-menu">
+            <div className={`bookmark-menu${!canMoveDown ? ' drop-up' : ''}`}>
               <button
                 onClick={() => { setMenuOpen(false); onMoveUp(); }}
                 disabled={!canMoveUp}

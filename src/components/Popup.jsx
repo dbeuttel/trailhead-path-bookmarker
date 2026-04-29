@@ -2,9 +2,13 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import Column from './Column.jsx';
 import TabBar from './TabBar.jsx';
 import ConfirmDialog from './ConfirmDialog.jsx';
+import MinimizedList from './MinimizedList.jsx';
 import iconUrl from '../../assets/tray-icon.png';
 
 const COLUMN_WIDTH = 216;
+// Minimized list view: alias + up to 5 inline action buttons. Slightly wider
+// than a single column so the alias has room next to the buttons.
+const MINIMIZED_WIDTH = 260;
 // Padding budget so the popup doesn't clip the tab strip: popup-inner has
 // 14px each side and the tab-bar adds 2px breathing room on either side.
 const TAB_STRIP_PADDING = 32;
@@ -114,7 +118,7 @@ export default function Popup({
   // or scroll horizontally inside the popup once they would push it off-screen.
   useEffect(() => {
     if (minimized) {
-      window.bookmarks.setPopupWidth(COLUMN_WIDTH);
+      window.bookmarks.setPopupWidth(MINIMIZED_WIDTH);
       return;
     }
     const colsWidth = Math.max(1, visibleColumns.length || 1) * COLUMN_WIDTH;
@@ -273,7 +277,16 @@ export default function Popup({
           />
         )}
 
-        {minimized ? null : hasNoTabs ? (
+        {minimized ? (
+          <MinimizedList
+            tabs={tabs}
+            columns={columns}
+            bookmarks={bookmarks}
+            claudeAvailable={claudeAvailable}
+            inspectRevision={inspectRevision}
+            buttonVisibility={buttonVisibility}
+          />
+        ) : hasNoTabs ? (
           <div className="empty-state">
             No tabs yet — click <strong>+</strong> in the tab bar to create your first.
           </div>
