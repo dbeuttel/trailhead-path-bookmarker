@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import Column from './Column.jsx';
 import TabBar from './TabBar.jsx';
 import ConfirmDialog from './ConfirmDialog.jsx';
+import iconUrl from '../../assets/tray-icon.png';
 
 const COLUMN_WIDTH = 216;
 // Padding budget so the popup doesn't clip the tab strip: popup-inner has
@@ -41,11 +42,14 @@ export default function Popup({
   const heightDebounceRef = useRef(null);
   const settingsRef = useRef(null);
   const tabStripRef = useRef(null);
+  const brandRef = useRef(null);
+  const actionsRef = useRef(null);
   const [creatingColumn, setCreatingColumn] = useState(false);
   const [draftColumnName, setDraftColumnName] = useState('');
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [confirmRequest, setConfirmRequest] = useState(null);
   const [tabStripScrollWidth, setTabStripScrollWidth] = useState(0);
+  const [headerMinWidth, setHeaderMinWidth] = useState(0);
 
   const requestConfirm = useCallback((opts) => {
     setConfirmRequest(opts);
@@ -86,6 +90,34 @@ export default function Popup({
     };
   }, []);
 
+  // Measure the popup header's intrinsic width so the brand never gets
+  // ellipsized. The h1 has overflow:hidden + text-overflow:ellipsis to keep
+  // it from forcing the popup wider than its content; we ask for that width
+  // explicitly through scrollWidth (which reports the full text width even
+  // when the element is clipped).
+  useEffect(() => {
+    if (!brandRef.current || !actionsRef.current) return undefined;
+    const update = () => {
+      const brand = brandRef.current;
+      const actions = actionsRef.current;
+      if (!brand || !actions) return;
+      const iconEl = brand.querySelector('img');
+      const titleEl = brand.querySelector('h1');
+      const iconW = iconEl ? iconEl.offsetWidth : 0;
+      const titleW = titleEl ? titleEl.scrollWidth : 0;
+      const brandW = iconW + (titleW > 0 ? 8 + titleW : 0);
+      const actionsW = actions.scrollWidth;
+      // 28px = popup-inner horizontal padding (14 each side); 8px = gap
+      // between brand and actions inside popup-header.
+      setHeaderMinWidth(brandW + 8 + actionsW + 28);
+    };
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(brandRef.current);
+    ro.observe(actionsRef.current);
+    return () => ro.disconnect();
+  }, []);
+
   // Watch the tab strip's scrollWidth so renames or new tabs widen the popup.
   // ResizeObserver picks up both layout changes (window width changes) and
   // content changes (a tab rename growing the strip).
@@ -112,8 +144,8 @@ export default function Popup({
   useEffect(() => {
     const colsWidth = Math.max(1, visibleColumns.length || 1) * COLUMN_WIDTH;
     const tabsWidth = tabStripScrollWidth > 0 ? tabStripScrollWidth + TAB_STRIP_PADDING : 0;
-    window.bookmarks.setPopupWidth(Math.max(colsWidth, tabsWidth));
-  }, [visibleColumns.length, tabStripScrollWidth]);
+    window.bookmarks.setPopupWidth(Math.max(colsWidth, tabsWidth, headerMinWidth));
+  }, [visibleColumns.length, tabStripScrollWidth, headerMinWidth]);
 
   const submitNewColumn = async () => {
     const name = draftColumnName.trim();
@@ -152,8 +184,11 @@ export default function Popup({
     <div className="popup">
       <div className="popup-inner" ref={rootRef}>
         <div className="popup-header drag-region">
-          <h1>Trailhead</h1>
-          <div className="header-actions">
+          <div className="popup-brand" ref={brandRef}>
+            <img src={iconUrl} alt="" className="popup-brand-icon" />
+            <h1>Trailhead Path Bookmarker</h1>
+          </div>
+          <div className="header-actions" ref={actionsRef}>
             {!creatingColumn ? (
               <button
                 className="icon-button"

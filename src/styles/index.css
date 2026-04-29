@@ -173,6 +173,25 @@ html, body { height: 100%; }
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 8px;
+  min-width: 0;
+}
+
+.popup-brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  flex: 1;
+}
+
+.popup-brand-icon {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 auto;
+  -webkit-user-drag: none;
+  user-select: none;
+  pointer-events: none;
 }
 
 .popup-header h1 {
@@ -180,6 +199,10 @@ html, body { height: 100%; }
   font-weight: 600;
   margin: 0;
   letter-spacing: 0.2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
 }
 
 .header-actions {
