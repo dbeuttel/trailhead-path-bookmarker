@@ -563,7 +563,11 @@ button:disabled { opacity: 0.5; cursor: default; }
   flex-direction: row;
   gap: 2px;
   align-items: center;
-  flex: 1;
+  /* flex: 0 1 auto so scrollWidth reflects intrinsic content width — flex:1
+     would stretch the strip to fill the popup, creating a measurement
+     feedback loop with the auto-resize logic in Popup. */
+  flex: 0 1 auto;
+  min-width: 0;
   overflow-x: auto;
   padding-bottom: 1px;
 }
