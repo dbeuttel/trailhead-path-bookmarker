@@ -1,7 +1,10 @@
-// Generates assets/tray-icon.png — Trailhead branding: a mountain peak with
-// a small pennant flag at the summit, in the app's accent orange. Tuned for
-// recognizability at Windows tray sizes (16-24px) by keeping every stroke
-// at least 2 source pixels wide so it survives downscaling.
+// Generates assets/tray-icon.png — Trailhead branding: a bookmark ribbon
+// (vertical rectangle with a V-cut at the bottom — the universal "save"
+// glyph) carrying a mountain peak motif inside it. The ribbon silhouette
+// communicates the app's *function* (bookmarking); the inner peak ties to
+// the Trailhead theme.
+// Strokes are kept >=2 source pixels wide so the silhouette survives the
+// downscale to 16-24px Windows tray sizes.
 // No external image deps; raw PNG bytes via zlib.
 
 const fs = require('fs');
@@ -11,41 +14,45 @@ const zlib = require('zlib');
 const SIZE = 32;
 const OUT = path.join(__dirname, '..', 'assets', 'tray-icon.png');
 
-const ORANGE = [217, 119, 87, 255];       // #d97757
-const ORANGE_DARK = [165, 82, 56, 255];   // shadow on right slope + pole
-const ORANGE_LIGHT = [240, 158, 124, 255]; // peak highlight + flag
+const ORANGE = [217, 119, 87, 255];        // #d97757 — ribbon fill
+const ORANGE_DARK = [165, 82, 56, 255];    // shadow on right edge
+const CREAM = [250, 230, 215, 255];        // mountain motif inside the ribbon
 const TRANSPARENT = [0, 0, 0, 0];
 
-// Mountain triangle: peak at (15-16, 8), base spans (2-29, 27).
-function mountainHalfWidth(y) {
-  if (y < 8 || y > 27) return -1;
-  // Linear from 1 at y=8 (peak ~2px) to 14 at y=27 (~28px base).
-  return Math.floor(((y - 8) * 13) / 19) + 1;
+// Ribbon spans 14px wide (x=9..22) and 25px tall (y=3..27). The bottom 5
+// rows form a V-cut, narrowing the ribbon into two prongs.
+function inRibbon(x, y) {
+  if (x < 9 || x > 22) return false;
+  if (y < 3 || y > 27) return false;
+  if (y >= 23) {
+    const depth = y - 23;       // 0..4
+    const cutLeft = 15 - depth;
+    const cutRight = 16 + depth;
+    if (x >= cutLeft && x <= cutRight) return false;
+  }
+  return true;
+}
+
+// Mountain peak motif inside the upper half of the ribbon. Peak at y=7,
+// base at y=14, max half-width 4 (so base spans 8 source pixels).
+function inMountain(x, y) {
+  if (y < 7 || y > 14) return false;
+  const halfW = Math.floor((y - 7) / 2) + 1;
+  return x >= 15 - halfW + 1 && x <= 15 + halfW;
 }
 
 function colorAt(x, y) {
-  // Flag pole — vertical 2px column from y=2 down to where it meets the peak.
-  if ((x === 15 || x === 16) && y >= 2 && y <= 8) return ORANGE_DARK;
+  if (!inRibbon(x, y)) return TRANSPARENT;
 
-  // Flag pennant — rectangle to the right of the pole.
-  if (y >= 3 && y <= 6 && x >= 17 && x <= 22) return ORANGE_LIGHT;
+  // Inner mountain silhouette painted in cream so it pops against the
+  // orange ribbon at any size.
+  if (inMountain(x, y)) return CREAM;
 
-  // Mountain body.
-  const hw = mountainHalfWidth(y);
-  if (hw > 0) {
-    const cx = 15;
-    const left = cx - hw + 1;
-    const right = cx + hw;
-    if (x >= left && x <= right) {
-      // Right slope shadow — last 2 columns on the right edge of each row.
-      if (x >= right - 1 && hw > 1) return ORANGE_DARK;
-      // Soft peak highlight — top 2 rows, painted lighter.
-      if (y <= 9) return ORANGE_LIGHT;
-      return ORANGE;
-    }
-  }
+  // Right-edge shadow on the ribbon body (skip the V-cut zone so the cut
+  // edges look clean rather than half-shaded).
+  if (x === 22 && y >= 3 && y < 23) return ORANGE_DARK;
 
-  return TRANSPARENT;
+  return ORANGE;
 }
 
 function buildRawImage() {
