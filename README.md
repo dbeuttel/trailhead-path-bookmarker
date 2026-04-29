@@ -1,4 +1,4 @@
-# Folder Bookmark Tray
+# Trailhead Path Bookmarker
 
 A Windows system-tray app for bookmarking folder paths with quick-action buttons (Explorer, Terminal, Claude, Visual Studio).
 
@@ -41,7 +41,7 @@ npm run icon           # regenerate assets/tray-icon.png
 Persisted to `app.getPath('userData')/config.json`. On Windows that's:
 
 ```
-%APPDATA%\Folder Bookmark Tray\config.json
+%APPDATA%\Trailhead Path Bookmarker\config.json
 ```
 
 Schema:
@@ -78,7 +78,7 @@ assets/tray-icon.png       orange folder pictogram, 32×32
 
 ## Stack
 
-Electron 33, React 18, Vite 5. NSIS installer via `electron-builder` (`appId: com.dbeuttel.folder-bookmark-tray`). No native deps.
+Electron 33, React 18, Vite 5. NSIS installer via `electron-builder` (`appId: com.dbeuttel.trailhead-path-bookmarker`). No native deps.
 
 ## Non-goals
 

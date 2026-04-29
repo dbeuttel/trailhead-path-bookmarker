@@ -1,5 +1,5 @@
 {
-  "name": "folder-bookmark-tray",
+  "name": "trailhead-path-bookmarker",
   "version": "0.1.0",
   "description": "Windows system tray app for bookmarking folders with quick-action buttons (Explorer, Terminal, Claude, Visual Studio).",
   "main": "electron/main.js",
@@ -28,7 +28,7 @@
     "wait-on": "^8.0.1"
   },
   "build": {
-    "appId": "com.dbeuttel.folder-bookmark-tray",
+    "appId": "com.dbeuttel.trailhead-path-bookmarker",
     "productName": "Trailhead Path Bookmarker",
     "files": [
       "electron/**/*",
@@ -37,7 +37,7 @@
     ],
     "win": {
       "target": "nsis",
-      "icon": "assets/tray-icon.png"
+      "icon": "assets/app-icon.png"
     },
     "nsis": {
       "oneClick": false,

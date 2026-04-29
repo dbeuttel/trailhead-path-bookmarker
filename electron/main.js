@@ -750,7 +750,7 @@ ipcMain.handle('set-popup-width', (_event, w) => {
 
 app.whenReady().then(() => {
   if (process.platform === 'win32') {
-    app.setAppUserModelId('com.dbeuttel.folder-bookmark-tray');
+    app.setAppUserModelId('com.dbeuttel.trailhead-path-bookmarker');
   }
   migrateConfigIfNeeded();
   pinned = !!readConfig().pinned;
